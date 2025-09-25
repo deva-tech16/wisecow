@@ -3,9 +3,8 @@ kind: Ingress
 metadata:
   name: wisecow-ingress
   namespace: wisecow
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
 spec:
+  ingressClassName: "nginx"
   rules:
   - host: wisecow.local
     http:
@@ -16,4 +15,4 @@ spec:
           service:
             name: wisecow-service
             port:
-              number: 4499
+              number: 80
