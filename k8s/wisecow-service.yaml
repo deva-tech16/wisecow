@@ -8,6 +8,6 @@ spec:
     app: wisecow
   ports:
     - protocol: TCP
-      port: 4499
+      port: 80        # expose standard HTTP to the ingress controller
       targetPort: 4499
   type: ClusterIP
