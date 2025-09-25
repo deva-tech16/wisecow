@@ -21,3 +21,9 @@ spec:
           imagePullPolicy: IfNotPresent   # don't try to pull if image exists locally on node
           ports:
             - containerPort: 4499
+readinessProbe:
+            tcpSocket:
+              port: 4499
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
