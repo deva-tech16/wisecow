@@ -17,13 +17,7 @@ spec:
     spec:
       containers:
         - name: wisecow
-          image: wisecow:latest
+          image: wisecow:latest        # will be loaded into Kind in the workflow
           imagePullPolicy: IfNotPresent   # don't try to pull if image exists locally on node
           ports:
             - containerPort: 4499
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 4499
-            initialDelaySeconds: 2
-            periodSeconds: 5
