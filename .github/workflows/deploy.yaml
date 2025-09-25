@@ -51,11 +51,10 @@ jobs:
         fi
         kubectl version --client
 
-  - name: Install ingress-nginx for kind (robust wait)
+    - name: Install ingress-nginx for kind (robust wait)
       run: |
         kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
 
-        # Wait for the ingress-nginx controller deployment to be created (max 60s loop)
         for i in {1..12}; do
           if kubectl -n ingress-nginx get deployment ingress-nginx-controller >/dev/null 2>&1; then
             echo "ingress-nginx controller deployment found"
@@ -65,13 +64,11 @@ jobs:
           sleep 5
         done
 
-        # Prefer rollout status (robust). If it exists, wait for rollout.
         if kubectl -n ingress-nginx get deployment ingress-nginx-controller >/dev/null 2>&1; then
           kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=180s || \
             (echo "rollout status timed out; will check pod readiness next" && true)
         fi
 
-        # Fallback: wait for at least one pod with the controller label to be ready
         echo "ensuring controller pod is Ready (fallback check)..."
         kubectl -n ingress-nginx wait --for=condition=Ready pod -l app.kubernetes.io/component=controller --timeout=180s || \
           (echo "fallback wait failed; showing pods for debugging" && kubectl -n ingress-nginx get pods -o wide && exit 1)
@@ -83,7 +80,6 @@ jobs:
       run: |
         kubectl apply -f k8s/wisecow-deployment.yaml
         kubectl apply -f k8s/wisecow-service.yaml
-        # If you included an ingress manifest (HTTP), apply it
         if [ -f k8s/wisecow-ingress.yaml ]; then kubectl apply -f k8s/wisecow-ingress.yaml; fi
 
     - name: Wait for rollout
@@ -98,16 +94,12 @@ jobs:
 
     - name: Port-forward ingress controller HTTP and test (plain HTTP)
       run: |
-        # forward ingress controller port 80 to runner:8080 (background)
         kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80 >/tmp/port-forward.log 2>&1 &
         sleep 6
         echo "=== curl http test ==="
-        # if you used ingress and host, resolve wisecow.local to localhost via --resolve
         if grep -q "host:" k8s/wisecow-ingress.yaml 2>/dev/null; then
-          # use resolve to set Host header
           curl -s -v --resolve "wisecow.local:8080:127.0.0.1" http://wisecow.local:8080/ || true
         else
-          # direct HTTP to forwarded port
           curl -s -v http://127.0.0.1:8080/ || true
         fi
         echo "=== port-forward logs ==="
