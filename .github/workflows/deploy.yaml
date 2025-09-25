@@ -51,10 +51,30 @@ jobs:
         fi
         kubectl version --client
 
-    - name: Install ingress-nginx for kind
+  - name: Install ingress-nginx for kind (robust wait)
       run: |
         kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-        kubectl -n ingress-nginx wait --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
+
+        # Wait for the ingress-nginx controller deployment to be created (max 60s loop)
+        for i in {1..12}; do
+          if kubectl -n ingress-nginx get deployment ingress-nginx-controller >/dev/null 2>&1; then
+            echo "ingress-nginx controller deployment found"
+            break
+          fi
+          echo "waiting for ingress-nginx deployment to be created..."
+          sleep 5
+        done
+
+        # Prefer rollout status (robust). If it exists, wait for rollout.
+        if kubectl -n ingress-nginx get deployment ingress-nginx-controller >/dev/null 2>&1; then
+          kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=180s || \
+            (echo "rollout status timed out; will check pod readiness next" && true)
+        fi
+
+        # Fallback: wait for at least one pod with the controller label to be ready
+        echo "ensuring controller pod is Ready (fallback check)..."
+        kubectl -n ingress-nginx wait --for=condition=Ready pod -l app.kubernetes.io/component=controller --timeout=180s || \
+          (echo "fallback wait failed; showing pods for debugging" && kubectl -n ingress-nginx get pods -o wide && exit 1)
 
     - name: Create namespace
       run: kubectl apply -f k8s/wisecow-namespace.yaml
